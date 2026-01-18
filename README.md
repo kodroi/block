@@ -6,8 +6,8 @@ Drop a `.claude-block` file in any directory to control what Claude can and cann
 
 ## Why use this?
 
-- **Prevent accidents** — Stop Claude from touching critical configs, lock files, or database migrations
-- **Flexible control** — Block everything, allow specific patterns, or block specific patterns
+- **Prevent accidents** — Stop Claude from touching lock files, CI workflows, or database migrations
+- **Scope to features** — Keep Claude focused on relevant directories, not unrelated code
 - **Guide Claude** — Custom messages explain why files are protected and what to do instead
 - **Zero friction** — Once set up, protection works automatically on every session
 
@@ -67,7 +67,7 @@ Block specific patterns, allow everything else:
 
 ```json
 {
-  "blocked": ["*.config.js", "secrets/**/*", "*.env*"]
+  "blocked": ["*.lock", "package-lock.json", "migrations/**/*", ".github/**/*"]
 }
 ```
 
@@ -89,10 +89,21 @@ Different messages for different patterns:
 ```json
 {
   "blocked": [
-    { "pattern": "*.env*", "guide": "Environment files contain secrets." },
-    { "pattern": "config/**", "guide": "Config files require review." }
+    { "pattern": "*.lock", "guide": "Lock files are auto-generated. Run the package manager instead." },
+    { "pattern": ".github/**/*", "guide": "CI workflows need manual review." }
   ],
   "guide": "This directory has protected files."
+}
+```
+
+### Scope to Feature
+
+Keep Claude focused on specific directories during feature work:
+
+```json
+{
+  "allowed": ["src/features/auth/**/*", "src/components/auth/**/*", "tests/auth/**/*"],
+  "guide": "Working on auth feature. Only touching auth-related files."
 }
 ```
 
