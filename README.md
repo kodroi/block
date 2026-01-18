@@ -4,16 +4,16 @@ File and directory protection for Claude Code using `.claude-block` marker files
 
 ## Installation
 
-Add the plugin directly:
+1. Register the marketplace:
 
-```bash
-/plugin add C:\Users\iiro_\RiderProjects\claude-block
+```
+/plugin marketplace add iirorahkonen/claude-marketplace
 ```
 
-Or from GitHub (after publishing):
+2. Install the plugin:
 
-```bash
-/plugin add iiro/claude-block
+```
+/plugin install claude-block@claude-marketplace
 ```
 
 ## Usage
