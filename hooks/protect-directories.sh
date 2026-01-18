@@ -257,15 +257,16 @@ merge_configs() {
 
     if [[ "$main_empty" == "true" || "$local_empty" == "true" ]]; then
         # Return empty config (block all), but prefer local guide if available
-        local local_guide
+        local local_guide main_guide effective_guide
         local_guide=$(echo "$local_config" | jq -r '.guide // ""')
+        main_guide=$(echo "$main_config" | jq -r '.guide // ""')
         if [[ -n "$local_guide" ]]; then
-            echo '{"allowed":[],"blocked":[],"guide":"'"$local_guide"'","is_empty":true,"has_error":false,"error_message":""}'
+            effective_guide="$local_guide"
         else
-            local main_guide
-            main_guide=$(echo "$main_config" | jq -r '.guide // ""')
-            echo '{"allowed":[],"blocked":[],"guide":"'"$main_guide"'","is_empty":true,"has_error":false,"error_message":""}'
+            effective_guide="$main_guide"
         fi
+        jq -n --arg guide "$effective_guide" \
+            '{"allowed":[],"blocked":[],"guide":$guide,"is_empty":true,"has_error":false,"error_message":""}'
         return
     fi
 
@@ -489,13 +490,15 @@ test_is_marker_file() {
 # Block marker file removal
 block_marker_removal() {
     local target_file="$1"
+    local filename
+    filename=$(basename "$target_file")
 
     cat >&2 << EOF
-BLOCKED: Cannot modify $MARKER_FILE_NAME
+BLOCKED: Cannot modify $filename
 
 Target file: $target_file
 
-The $MARKER_FILE_NAME file is protected and cannot be modified or removed by Claude.
+The $filename file is protected and cannot be modified or removed by Claude.
 This is a safety mechanism to ensure directory protection remains in effect.
 
 To remove protection, manually delete the file using your file manager or terminal.
