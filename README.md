@@ -39,6 +39,29 @@ Use the `/claude-block` skill to interactively create a `.claude-block` file:
 
 Create a `.claude-block` file in any directory you want to protect.
 
+### Local Configuration Files
+
+For personal or machine-specific protection rules that shouldn't be committed to git, use `.claude-block.local`:
+
+```json
+// .claude-block.local - not committed to git
+{
+  "blocked": [".personal-config", "local-secrets/**/*"]
+}
+```
+
+Add `.claude-block.local` to your `.gitignore`:
+
+```
+.claude-block.local
+```
+
+When both `.claude-block` and `.claude-block.local` exist in the same directory:
+- **Blocked patterns**: Combined (union) - files blocked by either config are protected
+- **Allowed patterns**: Local overrides main
+- **Guide messages**: Local takes precedence
+- **Note**: Cannot mix `allowed` and `blocked` modes between the two files
+
 ## .claude-block Format
 
 The `.claude-block` file uses JSON format with three modes:
@@ -127,12 +150,13 @@ Keep Claude focused on specific directories during feature work:
 
 ## How It Works
 
-The plugin hooks into Claude's file operations. When Claude tries to modify a file, it checks for `.claude-block` files in the target directory and parents, then allows or blocks based on your rules.
+The plugin hooks into Claude's file operations. When Claude tries to modify a file, it checks for `.claude-block` and `.claude-block.local` files in the target directory and parents, merges their configurations, then allows or blocks based on your rules.
 
 **Key behaviors:**
-- `.claude-block` files themselves are always protected (cannot be modified by Claude)
+- `.claude-block` and `.claude-block.local` files themselves are always protected (cannot be modified by Claude)
 - Protection cascades to all subdirectories
-- Closest `.claude-block` to the target file takes precedence
+- Closest configuration file(s) to the target file takes precedence
+- When both files exist, they are merged (blocked patterns combined, local guide takes precedence)
 
 ## License
 
