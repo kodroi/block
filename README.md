@@ -1,6 +1,6 @@
 # claude-block
 
-File and directory protection for Claude Code using `.claude-block` marker files.
+File and directory protection for Claude Code using `.claude-block` configuration files.
 
 ## Installation
 
