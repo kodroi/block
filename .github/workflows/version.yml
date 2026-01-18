@@ -6,6 +6,7 @@ on:
     paths:
       - 'hooks/**'
       - 'skills/**'
+      - 'GitVersion.yml'
   workflow_dispatch:
 
 concurrency:
