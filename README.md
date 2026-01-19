@@ -150,15 +150,17 @@ The plugin hooks into Claude's file operations. When Claude tries to modify a fi
 
 ## Claude Code Modes
 
-The plugin works with all Claude Code permission modes:
+The plugin works with all Claude Code permission modes. Use `Shift+Tab` to cycle between modes.
 
-| Mode | Behavior |
-|------|----------|
-| **Normal mode** | Claude asks permission before each tool call. If you accept, the hook still enforces protection and can block the operation. |
-| **Auto-accept / YOLO mode** | Claude executes tools without asking. The hook is your only safety net - it intercepts operations before they execute and blocks protected files silently. |
-| **Plan mode** | Claude only proposes changes without executing tools. Protection isn't triggered since nothing actually executes. Once you exit plan mode and Claude attempts to apply changes, the hook will enforce protection. |
+| Mode | Hook `permission_mode` | Behavior |
+|------|------------------------|----------|
+| **Normal** | `default` | Claude asks permission before each tool call. If you accept, the hook still enforces protection and can block the operation. |
+| **Accept Edits** | `acceptEdits` | Auto-approves file edit operations. The hook intercepts before execution and blocks protected files. |
+| **Don't Ask / YOLO** | `dontAsk` | Auto-approves most operations without prompting. The hook is your safety net. |
+| **Bypass Permissions** | `bypassPermissions` | Skips permission checks entirely. The hook still enforces protection. |
+| **Plan Mode** | `plan` | Claude analyzes and plans with read-only tools, then presents a plan for approval. Protection triggers when the plan is executed. |
 
-In auto-accept mode, Claude executes without asking. The hook intercepts operations before they execute and blocks protected files - this is your safety net when running unattended.
+In auto-approve modes (`acceptEdits`, `dontAsk`, `bypassPermissions`), the hook is your only safety net - it intercepts operations before they execute and blocks protected files silently. This is essential when running Claude unattended.
 
 ## License
 
