@@ -25,6 +25,8 @@ Drop a `.block` file in any directory to control what Claude can and cannot edit
 /plugin install block@block-marketplace
 ```
 
+> **Note:** The `jq` command-line tool is required when using JSON configuration in `.block` files (patterns, allowed/blocked lists). For basic protection with an empty `.block` file, `jq` is not needed.
+
 ## Usage
 
 Use the `/block:create` command to interactively create a `.block` file:
