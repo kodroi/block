@@ -1,0 +1,4 @@
+{
+  "blocked": [".claude-plugin/plugin.json"],
+  "guide": "The CI pipeline updates the plugin version - do not modify manually."
+}
