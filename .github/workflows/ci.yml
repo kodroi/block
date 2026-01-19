@@ -270,3 +270,35 @@ jobs:
           git push origin "v${{ needs.version.outputs.majorMinorPatch }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-marketplace:
+    name: Update Marketplace
+    runs-on: ubuntu-latest
+    needs: [version, tag]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout marketplace repository
+        uses: actions/checkout@v6
+        with:
+          repository: iirorahkonen/block-marketplace
+          token: ${{ secrets.MARKETPLACE_TOKEN }}
+          path: marketplace
+
+      - name: Update marketplace.json plugin version
+        run: |
+          cd marketplace
+          VERSION="${{ needs.version.outputs.majorMinorPatch }}"
+          jq --arg v "$VERSION" '.plugins[0].version = $v' .claude-plugin/marketplace.json > tmp.json
+          mv tmp.json .claude-plugin/marketplace.json
+
+      - name: Commit and push
+        run: |
+          cd marketplace
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .claude-plugin/marketplace.json
+          git diff --staged --quiet || (
+            git commit -m "Update block plugin to v${{ needs.version.outputs.majorMinorPatch }}"
+            git push origin main
+          )
