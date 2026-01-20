@@ -21,9 +21,29 @@ When both files exist in the same directory, they are merged:
   { "guide": "message" } = common guide shown when blocked (fallback for patterns without specific guide)
   Both allowed and blocked = error (invalid configuration)
 
+Agent-specific permissions (optional):
+  {
+    "agents": {
+      "agent-name": { "allowed": ["pattern"] },
+      "other-agent": { "blocked": ["pattern"] },
+      "*": { "blocked": [] }
+    },
+    "guide": "message"
+  }
+  Agent names match the subagent_type from Task tool invocations.
+  Use "*" as a wildcard/default for unmatched agents.
+  When "agents" is present, top-level allowed/blocked are ignored.
+
 Patterns can be strings or objects with per-pattern guides:
   "pattern" = simple pattern (uses common guide as fallback)
   { "pattern": "...", "guide": "..." } = pattern with specific guide
+
+Examples:
+  { "blocked": ["*.secret", { "pattern": "config/**", "guide": "Config files protected." }] }
+  { "allowed": ["docs/**", { "pattern": "src/gen/**", "guide": "Generated files." }], "guide": "Fallback" }
+  { "agents": { "tdd-test-writer": { "allowed": ["**/*.test.ts"] }, "*": { "blocked": [] } } }
+
+Guide priority: pattern-specific guide > common guide > default message
 
 Patterns support wildcards:
   * = any characters except path separator
@@ -40,6 +60,64 @@ from typing import Optional
 
 MARKER_FILE_NAME = ".block"
 LOCAL_MARKER_FILE_NAME = ".block.local"
+
+# Global: Current agent type (detected from transcript)
+CURRENT_AGENT_TYPE = ""
+
+
+def get_current_agent_type(transcript_path: str) -> str:
+    """Get current agent type from transcript.
+
+    Parses the transcript to find the most recent Task tool invocation's subagent_type.
+    Returns agent type string (e.g., "tdd-test-writer") or empty if main agent/unknown.
+    """
+    if not transcript_path or not os.path.isfile(transcript_path):
+        return ""
+
+    agent_type = ""
+
+    try:
+        # Read last 100 lines to limit processing
+        with open(transcript_path, encoding="utf-8") as f:
+            lines = f.readlines()[-100:]
+    except OSError:
+        return ""
+
+    for line in lines:
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        extracted = None
+
+        # Try message.content array path (for assistant messages with tool_use)
+        if "message" in entry and "content" in entry["message"]:
+            for content_item in entry["message"]["content"]:
+                if isinstance(content_item, dict) and content_item.get("name") == "Task":
+                    input_data = content_item.get("input", {})
+                    if "subagent_type" in input_data:
+                        extracted = input_data["subagent_type"]
+                        break
+
+        # Try direct tool_input path
+        if not extracted and "tool_input" in entry:
+            extracted = entry["tool_input"].get("subagent_type")
+
+        # Try content array directly
+        if not extracted and "content" in entry:
+            for content_item in entry["content"]:
+                if isinstance(content_item, dict) and content_item.get("name") == "Task":
+                    input_data = content_item.get("input", {})
+                    if "subagent_type" in input_data:
+                        extracted = input_data["subagent_type"]
+                        break
+
+        if extracted and extracted != "null":
+            agent_type = extracted
+            # Don't break - we want the LAST (most recent) match
+
+    return agent_type
 
 
 def has_block_file_in_hierarchy(directory: str) -> bool:
@@ -71,23 +149,37 @@ def convert_wildcard_to_regex(pattern: str) -> str:
     pattern = pattern.replace("\\", "/")
     result = []
     i = 0
+    at_start = True
 
     while i < len(pattern):
         char = pattern[i]
         next_char = pattern[i + 1] if i + 1 < len(pattern) else ""
+        next2_char = pattern[i + 2] if i + 2 < len(pattern) else ""
 
         if char == "*":
             if next_char == "*":
-                result.append(".*")
-                i += 1
+                # **/ at start = optionally match any path + /
+                if at_start and next2_char == "/":
+                    result.append("(.*/)?")
+                    i += 2  # Skip ** and /
+                else:
+                    result.append(".*")
+                    i += 1
             else:
                 result.append("[^/]*")
+            at_start = False
         elif char == "?":
             result.append(".")
-        elif char in ".^$[](){}+||\\":
+            at_start = False
+        elif char == "/":
+            result.append("/")
+            # After a /, we might have **/ again - don't reset at_start
+        elif char in ".^$[](){}+|\\":
             result.append(f"\\{char}")
+            at_start = False
         else:
             result.append(char)
+            at_start = False
         i += 1
 
     return f"^{(''.join(result))}$"
@@ -114,8 +206,11 @@ def test_path_matches_pattern(path: str, pattern: str, base_path: str) -> bool:
         return False
 
 
-def get_lock_file_config(marker_path: str) -> dict:
-    """Get lock file configuration."""
+def get_lock_file_config(marker_path: str, current_agent_type: str = "") -> dict:
+    """Get lock file configuration.
+
+    If agents field is present, resolves config for current_agent_type.
+    """
     config = {
         "allowed": [],
         "blocked": [],
@@ -124,16 +219,17 @@ def get_lock_file_config(marker_path: str) -> dict:
         "has_error": False,
         "error_message": "",
         "has_allowed_key": False,
-        "has_blocked_key": False
+        "has_blocked_key": False,
+        "allow_all": False
     }
 
     if not os.path.isfile(marker_path):
         return config
 
     try:
-        with open(marker_path, "r", encoding="utf-8") as f:
+        with open(marker_path, encoding="utf-8") as f:
             content = f.read()
-    except (IOError, OSError):
+    except OSError:
         return config
 
     if not content or content.isspace():
@@ -144,6 +240,65 @@ def get_lock_file_config(marker_path: str) -> dict:
     except json.JSONDecodeError:
         return config
 
+    # Extract guide (applies to all modes)
+    config["guide"] = data.get("guide", "")
+
+    # Check for agents field (agent-specific permissions)
+    if "agents" in data:
+        agents_config = data["agents"]
+
+        # Try to get config for current agent type
+        agent_config = None
+        if current_agent_type and current_agent_type in agents_config:
+            agent_config = agents_config[current_agent_type]
+
+        # Fall back to wildcard "*" if no specific agent config
+        if agent_config is None and "*" in agents_config:
+            agent_config = agents_config["*"]
+
+        # If still no config, block everything (no matching agent rule)
+        if agent_config is None:
+            return config
+
+        # Extract allowed/blocked from agent config
+        agent_has_allowed = "allowed" in agent_config
+        agent_has_blocked = "blocked" in agent_config
+
+        # Check for both allowed and blocked in agent config (error)
+        if agent_has_allowed and agent_has_blocked:
+            config["has_error"] = True
+            agent_name = current_agent_type or "*"
+            config["error_message"] = f'Invalid .block: agent "{agent_name}" cannot specify both allowed and blocked lists'
+            return config
+
+        # Extract agent-specific guide if present
+        if "guide" in agent_config:
+            config["guide"] = agent_config["guide"]
+
+        # Extract allowed list from agent config
+        if agent_has_allowed:
+            allowed_list = agent_config["allowed"]
+            config["allowed"] = allowed_list
+            config["has_allowed_key"] = True
+            if len(allowed_list) > 0:
+                config["is_empty"] = False
+            # Empty allowed array means "allow nothing" (block all)
+
+        # Extract blocked list from agent config
+        if agent_has_blocked:
+            blocked_list = agent_config["blocked"]
+            config["blocked"] = blocked_list
+            config["has_blocked_key"] = True
+            if len(blocked_list) > 0:
+                config["is_empty"] = False
+            else:
+                # Empty blocked array means "block nothing" (allow all)
+                config["is_empty"] = False
+                config["allow_all"] = True
+
+        return config
+
+    # Traditional mode (no agents field) - check for top-level allowed/blocked
     has_allowed = "allowed" in data
     has_blocked = "blocked" in data
 
@@ -151,8 +306,6 @@ def get_lock_file_config(marker_path: str) -> dict:
         config["has_error"] = True
         config["error_message"] = "Invalid .block: cannot specify both allowed and blocked lists"
         return config
-
-    config["guide"] = data.get("guide", "")
 
     if has_allowed:
         config["allowed"] = data["allowed"]
@@ -193,7 +346,8 @@ def merge_configs(main_config: dict, local_config: Optional[dict]) -> dict:
             "has_error": False,
             "error_message": "",
             "has_allowed_key": False,
-            "has_blocked_key": False
+            "has_blocked_key": False,
+            "allow_all": False
         }
 
     # Check if keys are present (not just if arrays have items)
@@ -212,7 +366,8 @@ def merge_configs(main_config: dict, local_config: Optional[dict]) -> dict:
             "has_error": True,
             "error_message": "Invalid configuration: .block and .block.local cannot mix allowed and blocked modes",
             "has_allowed_key": False,
-            "has_blocked_key": False
+            "has_blocked_key": False,
+            "allow_all": False
         }
 
     local_guide = local_config.get("guide", "")
@@ -239,7 +394,8 @@ def merge_configs(main_config: dict, local_config: Optional[dict]) -> dict:
             "has_error": False,
             "error_message": "",
             "has_allowed_key": False,
-            "has_blocked_key": True
+            "has_blocked_key": True,
+            "allow_all": False
         }
 
     if main_has_allowed_key or local_has_allowed_key:
@@ -256,7 +412,8 @@ def merge_configs(main_config: dict, local_config: Optional[dict]) -> dict:
             "has_error": False,
             "error_message": "",
             "has_allowed_key": True,
-            "has_blocked_key": False
+            "has_blocked_key": False,
+            "allow_all": False
         }
 
     return {
@@ -267,7 +424,8 @@ def merge_configs(main_config: dict, local_config: Optional[dict]) -> dict:
         "has_error": False,
         "error_message": "",
         "has_allowed_key": False,
-        "has_blocked_key": False
+        "has_blocked_key": False,
+        "allow_all": False
     }
 
 
@@ -278,7 +436,7 @@ def get_full_path(path: str) -> str:
     return os.path.join(os.getcwd(), path)
 
 
-def test_directory_protected(file_path: str) -> Optional[dict]:
+def test_directory_protected(file_path: str, current_agent_type: str = "") -> Optional[dict]:
     """Test if directory is protected, returns protection info or None."""
     if not file_path:
         return None
@@ -298,7 +456,7 @@ def test_directory_protected(file_path: str) -> Optional[dict]:
 
         if has_main or has_local:
             if has_main:
-                main_config = get_lock_file_config(marker_path)
+                main_config = get_lock_file_config(marker_path, current_agent_type)
                 effective_marker_path = marker_path
             else:
                 main_config = {
@@ -307,12 +465,13 @@ def test_directory_protected(file_path: str) -> Optional[dict]:
                     "guide": "",
                     "is_empty": True,
                     "has_error": False,
-                    "error_message": ""
+                    "error_message": "",
+                    "allow_all": False
                 }
                 effective_marker_path = None
 
             if has_local:
-                local_config = get_lock_file_config(local_marker_path)
+                local_config = get_lock_file_config(local_marker_path, current_agent_type)
                 if not has_main:
                     effective_marker_path = local_marker_path
                 else:
@@ -450,6 +609,15 @@ def test_should_block(file_path: str, protection_info: dict) -> dict:
             "guide": guide
         }
 
+    # Check for allow_all flag (empty blocked array means "allow everything")
+    if config.get("allow_all"):
+        return {
+            "should_block": False,
+            "reason": "",
+            "is_config_error": False,
+            "guide": ""
+        }
+
     # Check if we're in allowed mode (allowed key was present in config)
     has_allowed_key = config.get("has_allowed_key", False)
     allowed_list = config.get("allowed", [])
@@ -535,14 +703,14 @@ def main():
     if not tool_name:
         sys.exit(0)
 
+    # Detect current agent type from transcript (if available)
+    transcript_path = data.get("transcript_path", "")
+    current_agent_type = get_current_agent_type(transcript_path) if transcript_path else ""
+
     tool_input = data.get("tool_input", {})
     paths_to_check = []
 
-    if tool_name == "Edit":
-        path = tool_input.get("file_path")
-        if path:
-            paths_to_check.append(path)
-    elif tool_name == "Write":
+    if tool_name == "Edit" or tool_name == "Write":
         path = tool_input.get("file_path")
         if path:
             paths_to_check.append(path)
@@ -566,7 +734,7 @@ def main():
             if os.path.isfile(full_path):
                 block_marker_removal(full_path)
 
-        protection_info = test_directory_protected(path)
+        protection_info = test_directory_protected(path, current_agent_type)
 
         if protection_info:
             target_file = protection_info["target_file"]

@@ -3,11 +3,11 @@ Edge case tests for the block plugin.
 """
 from tests.conftest import (
     create_block_file,
+    is_blocked,
+    make_bash_input,
     make_edit_input,
     make_write_input,
-    make_bash_input,
     run_hook,
-    is_blocked,
 )
 
 

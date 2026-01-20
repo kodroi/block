@@ -174,7 +174,7 @@ jobs:
           echo "Write tool correctly blocked"
 
   lint:
-    name: Python Linting
+    name: Python Linting and Type Checking
     runs-on: ubuntu-latest
 
     steps:
@@ -189,11 +189,15 @@ jobs:
       - name: Install linting tools
         run: |
           python -m pip install --upgrade pip
-          pip install ruff
+          pip install ruff mypy
 
       - name: Run ruff linter
         run: |
-          ruff check hooks/ tests/ || true
+          ruff check hooks/ tests/
+
+      - name: Run mypy type checker
+        run: |
+          mypy hooks/protect_directories.py --ignore-missing-imports
 
   e2e:
     name: E2E - ${{ matrix.os }}

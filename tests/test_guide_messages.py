@@ -3,9 +3,9 @@ Guide message tests for the block plugin.
 """
 from tests.conftest import (
     create_block_file,
+    is_blocked,
     make_edit_input,
     run_hook,
-    is_blocked,
 )
 
 

@@ -4,9 +4,9 @@ Local configuration file tests for the block plugin.
 from tests.conftest import (
     create_block_file,
     create_local_block_file,
+    is_blocked,
     make_edit_input,
     run_hook,
-    is_blocked,
 )
 
 

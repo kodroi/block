@@ -4,11 +4,11 @@ Marker file protection tests for the block plugin.
 from tests.conftest import (
     create_block_file,
     create_local_block_file,
-    make_edit_input,
+    is_blocked,
     make_bash_input,
+    make_edit_input,
     make_write_input,
     run_hook,
-    is_blocked,
 )
 
 
