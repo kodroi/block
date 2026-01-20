@@ -159,17 +159,18 @@ jobs:
       - name: Test hook directly with sample input (Windows)
         shell: bash
         run: |
-          # Create a test directory with protection
-          mkdir -p /tmp/test-project
-          touch /tmp/test-project/.block
+          # Use RUNNER_TEMP which works on Windows with Python
+          TEST_DIR="${RUNNER_TEMP}/test-project"
+          mkdir -p "$TEST_DIR"
+          touch "$TEST_DIR/.block"
 
           # Test Edit tool is blocked (check for JSON block decision)
-          OUTPUT=$(echo '{"tool_name": "Edit", "tool_input": {"file_path": "/tmp/test-project/file.txt"}}' | python hooks/protect_directories.py)
+          OUTPUT=$(echo "{\"tool_name\": \"Edit\", \"tool_input\": {\"file_path\": \"$TEST_DIR/file.txt\"}}" | python hooks/protect_directories.py)
           echo "$OUTPUT" | grep -q '"decision".*"block"' || { echo "Expected block decision for Edit"; exit 1; }
           echo "Edit tool correctly blocked"
 
           # Test Write tool is blocked
-          OUTPUT=$(echo '{"tool_name": "Write", "tool_input": {"file_path": "/tmp/test-project/file.txt"}}' | python hooks/protect_directories.py)
+          OUTPUT=$(echo "{\"tool_name\": \"Write\", \"tool_input\": {\"file_path\": \"$TEST_DIR/file.txt\"}}" | python hooks/protect_directories.py)
           echo "$OUTPUT" | grep -q '"decision".*"block"' || { echo "Expected block decision for Write"; exit 1; }
           echo "Write tool correctly blocked"
 
@@ -267,15 +268,20 @@ jobs:
       - name: Create test project directory
         shell: bash
         run: |
-          mkdir -p /tmp/e2e-test-project/protected
-          mkdir -p /tmp/e2e-test-project/unprotected
+          # Use RUNNER_TEMP for cross-platform compatibility
+          E2E_DIR="${RUNNER_TEMP}/e2e-test-project"
+          mkdir -p "${E2E_DIR}/protected"
+          mkdir -p "${E2E_DIR}/unprotected"
 
           # Create .block file in protected directory
-          echo '{}' > /tmp/e2e-test-project/protected/.block
+          echo '{}' > "${E2E_DIR}/protected/.block"
 
           # Create some test files
-          echo "protected content" > /tmp/e2e-test-project/protected/existing-file.txt
-          echo "unprotected content" > /tmp/e2e-test-project/unprotected/existing-file.txt
+          echo "protected content" > "${E2E_DIR}/protected/existing-file.txt"
+          echo "unprotected content" > "${E2E_DIR}/unprotected/existing-file.txt"
+
+          # Store path for later steps
+          echo "E2E_DIR=${E2E_DIR}" >> $GITHUB_ENV
 
       - name: Configure Claude Code with plugin hooks (Unix)
         if: runner.os != 'Windows'
@@ -369,7 +375,7 @@ jobs:
         run: |
           echo "Testing that protected files cannot be written..."
 
-          cd /tmp/e2e-test-project
+          cd "${E2E_DIR}"
 
           # Ask Claude to write to a protected file
           OUTPUT=$(claude --print "Write the text 'MODIFIED' to the file protected/test-write.txt" --max-turns 3 --allowedTools "" 2>&1) || true
@@ -404,7 +410,7 @@ jobs:
         run: |
           echo "Testing that unprotected files can be written..."
 
-          cd /tmp/e2e-test-project
+          cd "${E2E_DIR}"
 
           # Ask Claude to write to an unprotected file
           OUTPUT=$(claude --print "Write the text 'NEW CONTENT' to the file unprotected/test-write.txt" --max-turns 3 2>&1) || true
@@ -429,7 +435,7 @@ jobs:
 
           echo "=== Testing protect_directories.py ==="
 
-          PROTECT_OUTPUT=$(echo '{"tool_name": "Edit", "tool_input": {"file_path": "/tmp/e2e-test-project/protected/test.txt"}}' | python hooks/protect_directories.py)
+          PROTECT_OUTPUT=$(echo "{\"tool_name\": \"Edit\", \"tool_input\": {\"file_path\": \"${E2E_DIR}/protected/test.txt\"}}" | python hooks/protect_directories.py)
           echo "protect_directories output:"
           echo "$PROTECT_OUTPUT"
           echo ""
@@ -453,7 +459,7 @@ jobs:
           echo ""
           echo "=== Testing protect_directories.py with UNPROTECTED path (no .block) ==="
 
-          UNPROTECT_OUTPUT=$(echo '{"tool_name": "Edit", "tool_input": {"file_path": "/tmp/e2e-test-project/unprotected/test.txt"}}' | python hooks/protect_directories.py)
+          UNPROTECT_OUTPUT=$(echo "{\"tool_name\": \"Edit\", \"tool_input\": {\"file_path\": \"${E2E_DIR}/unprotected/test.txt\"}}" | python hooks/protect_directories.py)
           UNPROTECT_EXIT=$?
           echo "protect_directories output for unprotected path:"
           echo "$UNPROTECT_OUTPUT"
