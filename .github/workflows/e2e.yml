@@ -65,24 +65,27 @@ jobs:
       - name: Remove jq (macOS)
         if: matrix.os == 'macos-latest' && matrix.jq == 'without'
         run: |
-          # Find and rename jq binaries to hide them (SIP prevents removal from /usr/bin)
-          JQ_PATHS=$(which -a jq 2>/dev/null || true)
-          for jq_path in $JQ_PATHS; do
-            echo "Renaming $jq_path to ${jq_path}.disabled"
-            sudo mv "$jq_path" "${jq_path}.disabled" 2>/dev/null || true
-          done
+          # Create a fake jq that always fails
+          # SIP prevents modifying /usr/bin, so we override PATH instead
+          mkdir -p ~/bin
+          cat > ~/bin/jq <<'FAKEJQ'
+          #!/bin/bash
+          echo "jq: command not found" >&2
+          exit 127
+          FAKEJQ
+          chmod +x ~/bin/jq
 
-          # Also try common locations
-          sudo mv /usr/local/bin/jq /usr/local/bin/jq.disabled 2>/dev/null || true
-          sudo mv /opt/homebrew/bin/jq /opt/homebrew/bin/jq.disabled 2>/dev/null || true
-          sudo mv /usr/bin/jq /usr/bin/jq.disabled 2>/dev/null || true
+          # Prepend ~/bin to PATH for all subsequent steps
+          echo "$HOME/bin" >> $GITHUB_PATH
 
+          # Verify jq is not accessible (need to use full path since PATH not updated yet in this step)
+          export PATH="$HOME/bin:$PATH"
           hash -r
-          if command -v jq; then
-            echo "ERROR: jq still accessible at $(which jq)"
+          if command -v jq && jq --version 2>/dev/null; then
+            echo "ERROR: Real jq still accessible"
             exit 1
           else
-            echo "jq successfully hidden/removed"
+            echo "jq successfully shadowed with fake binary"
           fi
 
       - name: Remove jq (Windows)
