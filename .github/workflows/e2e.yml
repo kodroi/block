@@ -487,6 +487,11 @@ jobs:
           echo "Testing hooks directly with simulated Claude Code input..."
           echo ""
 
+          # Verify PATH and jq availability
+          echo "Current PATH: $PATH"
+          echo "Which jq: $(which jq 2>&1 || echo 'not found')"
+          echo ""
+
           # Test check-jq hook
           echo "=== Testing check-jq.sh ==="
           CHECK_JQ_OUTPUT=$(bash hooks/check-jq.sh)
