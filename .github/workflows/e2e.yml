@@ -150,37 +150,37 @@ jobs:
           # Create Claude Code settings directory
           mkdir -p ~/.claude
 
-          # Create settings.json with hooks configuration (no indentation in heredoc)
-          cat > ~/.claude/settings.json <<SETTINGS_EOF
-{
-  "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
+          # Create settings.json with hooks configuration
+          cat > ~/.claude/settings.json <<EOF
           {
-            "type": "command",
-            "command": "${CHECK_JQ_PATH}",
-            "timeout": 5000
+            "hooks": {
+              "SessionStart": [
+                {
+                  "matcher": "",
+                  "hooks": [
+                    {
+                      "type": "command",
+                      "command": "${CHECK_JQ_PATH}",
+                      "timeout": 5000
+                    }
+                  ]
+                }
+              ],
+              "PreToolUse": [
+                {
+                  "matcher": "Edit|Write|NotebookEdit|Bash",
+                  "hooks": [
+                    {
+                      "type": "command",
+                      "command": "${PROTECT_PATH}",
+                      "timeout": 5000
+                    }
+                  ]
+                }
+              ]
+            }
           }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Edit|Write|NotebookEdit|Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${PROTECT_PATH}",
-            "timeout": 5000
-          }
-        ]
-      }
-    ]
-  }
-}
-SETTINGS_EOF
+          EOF
 
           echo ""
           echo "Created Claude Code settings:"
@@ -222,36 +222,36 @@ SETTINGS_EOF
           mkdir -p ~/.claude
 
           # Create settings.json with hooks configuration
-          cat > ~/.claude/settings.json <<SETTINGS_EOF
-{
-  "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
+          cat > ~/.claude/settings.json <<EOF
           {
-            "type": "command",
-            "command": "${CHECK_JQ_PATH}",
-            "timeout": 5000
+            "hooks": {
+              "SessionStart": [
+                {
+                  "matcher": "",
+                  "hooks": [
+                    {
+                      "type": "command",
+                      "command": "${CHECK_JQ_PATH}",
+                      "timeout": 5000
+                    }
+                  ]
+                }
+              ],
+              "PreToolUse": [
+                {
+                  "matcher": "Edit|Write|NotebookEdit|Bash",
+                  "hooks": [
+                    {
+                      "type": "command",
+                      "command": "${PROTECT_PATH}",
+                      "timeout": 5000
+                    }
+                  ]
+                }
+              ]
+            }
           }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Edit|Write|NotebookEdit|Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${PROTECT_PATH}",
-            "timeout": 5000
-          }
-        ]
-      }
-    ]
-  }
-}
-SETTINGS_EOF
+          EOF
 
           echo ""
           echo "Created Claude Code settings (Windows):"
