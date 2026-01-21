@@ -212,7 +212,7 @@ jobs:
 
       - name: Make scripts executable (Unix)
         if: runner.os != 'Windows'
-        run: chmod +x hooks/*.sh hooks/*.py
+        run: chmod +x hooks/*.py
 
       - name: Verify hook scripts exist
         shell: bash
