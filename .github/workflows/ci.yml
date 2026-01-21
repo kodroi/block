@@ -212,7 +212,7 @@ jobs:
 
       - name: Make scripts executable (Unix)
         if: runner.os != 'Windows'
-        run: chmod +x hooks/*.py
+        run: chmod +x hooks/*.py hooks/run-hook.cmd
 
       - name: Verify hook scripts exist
         shell: bash
@@ -309,7 +309,6 @@ jobs:
           cat ~/.claude/settings.json
 
       - name: E2E Test - Protected file write blocked
-        continue-on-error: true  # Hook may not load in CI; direct hook tests verify logic
         shell: bash
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
