@@ -90,17 +90,23 @@ def make_notebook_input(notebook_path: str) -> str:
     })
 
 
-def run_hook(hooks_dir: Path, input_json: str) -> Tuple[int, str, str]:
+def run_hook(hooks_dir: Path, input_json: str, cwd: Optional[Path] = None) -> Tuple[int, str, str]:
     """
     Run the protect_directories.py hook with given input.
     Returns (exit_code, stdout, stderr).
+
+    Args:
+        hooks_dir: Path to the hooks directory
+        input_json: JSON input to pass to the hook via stdin
+        cwd: Optional working directory to run the hook from
     """
     hook_script = hooks_dir / "protect_directories.py"
     result = subprocess.run(
         [sys.executable, str(hook_script)],
         input=input_json,
         capture_output=True,
-        text=True
+        text=True,
+        cwd=cwd
     )
     return result.returncode, result.stdout, result.stderr
 
