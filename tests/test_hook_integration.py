@@ -1,11 +1,7 @@
 """Integration tests for the hook entry point (run-hook.cmd)."""
 
-import os
 import subprocess
-import tempfile
 from pathlib import Path
-
-import pytest
 
 # Get the hooks directory as absolute path
 HOOKS_DIR = (Path(__file__).parent.parent / "hooks").resolve()
