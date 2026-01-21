@@ -41,11 +41,11 @@ check_dir="$(pwd)"
 while [ -n "$check_dir" ]; do
     if [ -f "$check_dir/.block" ] || [ -f "$check_dir/.block.local" ]; then
         # .block file exists, need Python to evaluate protection rules
-        if command -v python3 &> /dev/null; then
+        if command -v python3 >/dev/null 2>&1; then
             python3 "$HOOK_DIR/protect_directories.py"
             exit $?
         fi
-        if command -v python &> /dev/null; then
+        if command -v python >/dev/null 2>&1; then
             python "$HOOK_DIR/protect_directories.py"
             exit $?
         fi
