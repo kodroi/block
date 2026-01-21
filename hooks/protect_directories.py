@@ -293,7 +293,20 @@ def get_full_path(path: str) -> str:
 
 
 def test_directory_protected(file_path: str) -> Optional[dict]:
-    """Test if directory is protected, returns protection info or None."""
+    """
+    Determine whether the file's directory (or any ancestor) contains a protection marker and return its protection information.
+    
+    Parameters:
+        file_path (str): Path to the target file to check.
+    
+    Returns:
+        dict or None: A dictionary with protection details if a marker is found; otherwise `None`.
+            The returned dictionary contains:
+                - "target_file" (str): Normalized absolute path of the examined file.
+                - "marker_path" (str or None): Path to the discovered marker file (or combined label when both main and local markers are present), or `None` if only a local marker exists and no main marker path should be shown.
+                - "marker_directory" (str): Directory that contains the marker.
+                - "config" (dict): Merged protection configuration produced by reading the marker files.
+    """
     if not file_path:
         return None
 
