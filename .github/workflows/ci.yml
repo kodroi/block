@@ -352,8 +352,9 @@ jobs:
           cd "${E2E_DIR}"
 
           # Ask Claude to write to a protected file
+          # Note: --allowedTools "Write" allows Claude to attempt the write, so the hook can block it
           set +e
-          OUTPUT=$(claude --print "Write the text 'MODIFIED' to the file protected/test-write.txt" --max-turns 3 --allowedTools "" 2>&1)
+          OUTPUT=$(claude --print "Write the text 'MODIFIED' to the file protected/test-write.txt" --max-turns 3 --allowedTools "Write" 2>&1)
           CLAUDE_EXIT=$?
           set -e
 
