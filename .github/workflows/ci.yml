@@ -170,6 +170,23 @@ jobs:
           )
           echo PASS: cmd.exe hook execution works correctly
 
+      - name: Test hook allows without .block file (no Python needed)
+        shell: cmd
+        run: |
+          REM Create a directory WITHOUT .block file
+          mkdir %TEMP%\no-block-test
+          cd %TEMP%\no-block-test
+          echo {"tool_name": "Edit", "tool_input": {"file_path": "test.txt"}} | %GITHUB_WORKSPACE%\hooks\run-hook.cmd > %TEMP%\no-block-output.txt 2>&1
+          REM Should produce no output (allow) and exit 0
+          if exist %TEMP%\no-block-output.txt (
+            for %%A in (%TEMP%\no-block-output.txt) do if %%~zA gtr 0 (
+              echo FAIL: Expected no output when no .block file exists
+              type %TEMP%\no-block-output.txt
+              exit /b 1
+            )
+          )
+          echo PASS: Hook allows operations without .block file
+
   lint:
     name: Python Linting and Type Checking
     runs-on: ubuntu-latest
