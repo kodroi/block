@@ -262,6 +262,8 @@ jobs:
         shell: bash
         run: |
           HOOK_PATH="${GITHUB_WORKSPACE}/hooks/run-hook.cmd"
+          # Convert backslashes to forward slashes for JSON compatibility
+          HOOK_PATH="${HOOK_PATH//\\//}"
           echo "Hook path: $HOOK_PATH"
 
           # Verify hook exists
