@@ -314,7 +314,7 @@ class TestChildDirBlockWithParentProtection:
             f"mv on parent dir with protected child should be blocked. Got: {stdout}"
         )
 
-    def test_cp_parent_dir_not_blocked_by_child_block(self, test_dir, hooks_dir):
+    def test_cp_parent_dir_blocked_by_child_block(self, test_dir, hooks_dir):
         """cp from parent directory should still be blocked since cp extracts the path too."""
         parent_dir = test_dir / "parent"
         child_dir = parent_dir / "child"
