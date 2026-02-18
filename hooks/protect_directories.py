@@ -655,7 +655,6 @@ def check_descendant_block_files(dir_path: str) -> Optional[str]:
     Returns path to first .block file found, or None.
     """
     dir_path = get_full_path(dir_path)
-    dir_path = dir_path.replace("\\", "/").rstrip("/")
 
     if not os.path.isdir(dir_path):
         return None
