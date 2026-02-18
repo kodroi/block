@@ -661,16 +661,30 @@ def check_descendant_block_files(dir_path: str) -> Optional[str]:
         return None
 
     normalized = os.path.normpath(dir_path)
+
+    def _walk_error(err: OSError) -> None:
+        warnings.warn(
+            f"check_descendant_block_files: cannot read "
+            f"'{err.filename}' under '{dir_path}': {err}",
+            stacklevel=2,
+        )
+
     try:
-        for root, _dirs, files in os.walk(dir_path):
+        for root, _dirs, files in os.walk(
+            dir_path, onerror=_walk_error,
+        ):
             if os.path.normpath(root) == normalized:
                 continue
             if MARKER_FILE_NAME in files:
                 return os.path.join(root, MARKER_FILE_NAME)
             if LOCAL_MARKER_FILE_NAME in files:
                 return os.path.join(root, LOCAL_MARKER_FILE_NAME)
-    except OSError:
-        pass
+    except OSError as exc:
+        warnings.warn(
+            f"check_descendant_block_files: os.walk failed "
+            f"for '{dir_path}': {exc}",
+            stacklevel=2,
+        )
     return None
 
 
