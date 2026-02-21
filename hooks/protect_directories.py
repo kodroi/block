@@ -524,16 +524,16 @@ def resolve_agent_type(data: dict) -> Optional[str]:
 def should_apply_to_agent(config: dict, agent_type: Optional[str]) -> bool:
     """Determine if blocking rules should apply given the agent type.
 
-    agent_type is None for the main agent, or a string like "Explore" for subagents.
+    agent_type is None for the main agent, or a string like "TestCreator" for subagents.
 
-    Truth table:
-    | Config                                | Main agent | Listed subagents | Other subagents |
-    |---------------------------------------|-----------|-----------------|-----------------|
-    | No agents, no disable_main_agent      | Blocked   | Blocked         | Blocked         |
-    | agents: ["Explore"]                   | Blocked   | Blocked         | Allowed         |
-    | disable_main_agent: true              | Allowed   | Blocked         | Blocked         |
-    | agents: ["Explore"] + disable: true   | Allowed   | Blocked         | Allowed         |
-    | agents: []                            | Blocked   | Allowed         | Allowed         |
+    Truth table ("Skipped" = this .block file is skipped, others may still block):
+    | Config                                     | Main agent | Listed subagents | Other subagents |
+    |--------------------------------------------|-----------|-----------------|-----------------|
+    | No agents, no disable_main_agent           | Blocked   | Blocked         | Blocked         |
+    | agents: ["TestCreator"]                    | Skipped   | Blocked         | Skipped         |
+    | disable_main_agent: true                   | Skipped   | Blocked         | Blocked         |
+    | agents: ["TestCreator"] + disable: true    | Skipped   | Blocked         | Skipped         |
+    | agents: []                                 | Skipped   | Skipped         | Skipped         |
     """
     has_agents_key = config.get("has_agents_key", False)
     has_disable_key = config.get("has_disable_main_agent_key", False)
@@ -547,6 +547,9 @@ def should_apply_to_agent(config: dict, agent_type: Optional[str]) -> bool:
     is_main = agent_type is None
 
     if is_main:
+        # Main agent is exempt when agents key is present (agent rules target subagents)
+        if has_agents_key:
+            return False
         # Main agent is exempt if disable_main_agent is true
         return not (has_disable_key and disable_main)
 

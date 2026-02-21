@@ -61,10 +61,10 @@ class TestShouldApplyToAgent:
         assert should_apply_to_agent(config, "Explore") is True
         assert should_apply_to_agent(config, "code-reviewer") is True
 
-    def test_agents_list_applies_to_main(self):
-        """agents: ["Explore"] → applies to main agent (main not filtered by agents list)."""
+    def test_agents_list_exempts_main(self):
+        """agents: ["Explore"] → does NOT apply to main agent (agents key targets subagents only)."""
         config = _create_empty_config(agents=["Explore"], has_agents_key=True)
-        assert should_apply_to_agent(config, None) is True
+        assert should_apply_to_agent(config, None) is False
 
     def test_agents_list_applies_to_listed_subagent(self):
         """agents: ["Explore"] → applies to Explore subagent."""
@@ -111,10 +111,10 @@ class TestShouldApplyToAgent:
         )
         assert should_apply_to_agent(config, "Plan") is False
 
-    def test_empty_agents_list_applies_to_main(self):
-        """agents: [] → applies to main agent."""
+    def test_empty_agents_list_exempts_main(self):
+        """agents: [] → does NOT apply to main agent (agents key targets subagents only)."""
         config = _create_empty_config(agents=[], has_agents_key=True)
-        assert should_apply_to_agent(config, None) is True
+        assert should_apply_to_agent(config, None) is False
 
     def test_empty_agents_list_does_not_apply_to_subagent(self):
         """agents: [] → does NOT apply to any subagent."""
@@ -574,14 +574,14 @@ class TestAgentRulesEndToEnd:
         code, stdout, _ = run_hook(hooks_dir, input_json)
         assert not is_blocked(stdout)
 
-    def test_agents_list_still_blocks_main(self, tmp_path, hooks_dir):
-        """agents: ["Explore"] + .block blocks all → still blocks main agent."""
+    def test_agents_list_allows_main(self, tmp_path, hooks_dir):
+        """agents: ["Explore"] + .block → allows main agent (agents key targets subagents only)."""
         protected = tmp_path / "protected"
         create_block_file(protected, json.dumps({"agents": ["Explore"]}))
         target = str(protected / "file.txt")
         input_json = make_edit_input_with_agent(target)
         code, stdout, _ = run_hook(hooks_dir, input_json)
-        assert is_blocked(stdout)
+        assert not is_blocked(stdout)
 
     def test_disable_main_allows_main(self, tmp_path, hooks_dir):
         """disable_main_agent: true + .block blocks all → allows main agent."""

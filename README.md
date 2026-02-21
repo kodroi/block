@@ -142,31 +142,32 @@ Keep Claude focused on specific directories during feature work:
 
 ### Agent-Specific Rules (Claude Code only)
 
-Scope protection to specific subagent types. For example, only allow a TDD agent to write test files:
+Scope protection to specific subagent types. For example, only allow a test-writing agent to modify test files:
 
 ```
 tests/
-└── .block      → {"agents": ["TDD_agent"], "disable_main_agent": true}
+└── .block      → {"agents": ["TestCreator"]}
 ```
 
-This blocks all subagents except `TDD_agent` from writing to `tests/`, while the main agent is also exempt.
+This blocks all subagents except `TestCreator` from writing to `tests/`. The main agent is automatically exempt when `agents` is set.
 
 | Key | Type | Description |
 |-----|------|-------------|
-| `agents` | `string[]` | Subagent types to block (e.g. `"TDD_agent"`, `"Bash"`) |
-| `disable_main_agent` | `bool` | When `true`, the main agent is exempt from blocking |
+| `agents` | `string[]` | Subagent types to block. Main agent is exempt by default. |
+| `disable_main_agent` | `bool` | When `true`, the main agent is exempt from blocking (for use without `agents`) |
 
 **Truth table:**
+
+*"Skipped" means this `.block` file is skipped — other `.block` files may still block.*
 
 | Config | Main agent | Listed subagents | Other subagents |
 |--------|-----------|-----------------|-----------------|
 | No agent keys | Blocked | Blocked | Blocked |
-| `agents: ["TDD_agent"]` | Blocked | Blocked | Allowed |
-| `disable_main_agent: true` | Allowed | Blocked | Blocked |
-| Both keys set | Allowed | Blocked | Allowed |
-| `agents: []` | Blocked | Allowed | Allowed |
+| `agents: ["TestCreator"]` | Skipped | Blocked | Skipped |
+| `disable_main_agent: true` | Skipped | Blocked | Blocked |
+| Both keys set | Skipped | Blocked | Skipped |
+| `agents: []` | Skipped | Skipped | Skipped |
 
-Existing `.block` files without agent keys continue to block all agents (backward-compatible). Agent fields are inherited through hierarchical merges, with child/local files overriding parent values.
 
 ## Pattern Syntax
 
