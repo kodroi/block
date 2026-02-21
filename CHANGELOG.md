@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented in this file.
 
-## Unreleased
+## v1.3.1 (2026-02-21)
 
 - **Security fix**: Bash command detection now catches `sed -i`, `awk -i inplace`, `perl -i`, and `patch` commands that modify files in-place. Previously these commands could bypass `.block` protection.
 
