@@ -751,9 +751,9 @@ def get_bash_target_paths(command: str) -> list:
                 scan = i + 1
                 while scan < len(tokens) and tokens[scan] not in ("|", ";", "&", "&&", "||"):
                     arg = tokens[scan]
-                    if arg.startswith("--in-place"):
-                        has_inplace = True
-                    elif arg.startswith("-") and not arg.startswith("--") and "i" in arg[1:]:
+                    if arg.startswith("--in-place") or (
+                        arg.startswith("-") and not arg.startswith("--") and "i" in arg[1:]
+                    ):
                         has_inplace = True
                     if arg in ("-e", "-f"):
                         has_explicit_script = True
